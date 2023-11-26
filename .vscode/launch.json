@@ -6,6 +6,20 @@
   "configurations": [
     {
       "type": "java",
+      "name": "Function1Computation",
+      "request": "launch",
+      "mainClass": "Java.Functions.Function1.Function1Computation",
+      "projectName": "Operating Systems_6c7eb622"
+    },
+    {
+      "type": "java",
+      "name": "Main",
+      "request": "launch",
+      "mainClass": "Java.Main",
+      "projectName": "Operating Systems_6c7eb622"
+    },
+    {
+      "type": "java",
       "name": "Current File",
       "request": "launch",
       "mainClass": "${file}"
@@ -32,14 +46,14 @@
       "projectName": "Operating Systems_6c7eb622"
     }
   ],
-  "compounds": [
-    {
-      "name": "Server & Client",
-      "configurations": [
-        "Server",
-        "Client"
-      ],
-      "stopAll": true
-    }
-  ]
+  // "compounds": [
+  //   {
+  //     "name": "Server & Client",
+  //     "configurations": [
+  //       "Server",
+  //       "Client"
+  //     ],
+  //     "stopAll": true
+  //   }
+  // ]
 }

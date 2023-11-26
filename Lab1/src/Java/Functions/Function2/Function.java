@@ -1,9 +1,9 @@
-package Java.Functions.Function1;
+package Java.Functions.Function2;
 
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
-public class Computation1 {
+public class Function {
     final static int CASE1_ATTEMPTS = 3;
     static int attempt = CASE1_ATTEMPTS;
     public static Optional<Optional<Double>> compfunc(int n) { 
