@@ -6,6 +6,48 @@
   "configurations": [
     {
       "type": "java",
+      "name": "Test",
+      "request": "launch",
+      "mainClass": "lab1.functions.Test",
+      "projectName": "labs"
+    },
+    {
+      "type": "java",
+      "name": "App",
+      "request": "launch",
+      "mainClass": "lab1.App",
+      "projectName": "labs"
+    },
+    {
+      "type": "java",
+      "name": "Main",
+      "request": "launch",
+      "mainClass": "lab1.Main",
+      "projectName": "labs"
+    },
+    {
+      "type": "java",
+      "name": "Manager",
+      "request": "launch",
+      "mainClass": "lab1.manager.Manager",
+      "projectName": "labs"
+    },
+    {
+      "type": "java",
+      "name": "Main",
+      "request": "launch",
+      "mainClass": "os.Main",
+      "projectName": "labs"
+    },
+    {
+      "type": "java",
+      "name": "Main",
+      "request": "launch",
+      "mainClass": "Main",
+      "projectName": "Operating Systems_6c7eb622"
+    },
+    {
+      "type": "java",
       "name": "Function1Computation",
       "request": "launch",
       "mainClass": "Java.Functions.Function1.Function1Computation",

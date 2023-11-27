@@ -1,0 +1,6 @@
+{
+  "java.project.sourcePaths": [
+    "Lab1/src",
+    "labs/src/main/java/os"
+  ]
+}

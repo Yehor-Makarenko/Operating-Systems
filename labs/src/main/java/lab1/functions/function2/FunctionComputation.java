@@ -1,4 +1,4 @@
-package Java.Functions.Function1;
+package lab1.functions.function2;
 
 import java.io.ByteArrayOutputStream;
 import java.io.ObjectOutputStream;
@@ -7,24 +7,19 @@ import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.util.concurrent.Future;
 
-import Java.Functions.FunctionResult;
+import lab1.functions.FunctionResult;
 
-public class Function1Computation {
-  public static void main(String[] args) throws Exception {
+public class FunctionComputation {
+  public static void main(String[] args) throws Exception {    
+    System.out.println(args[0]);
     AsynchronousSocketChannel client = AsynchronousSocketChannel.open();
-    Future<Void> result = client.connect(new InetSocketAddress("127.0.0.1", 1234));
+    Future<Void> result = client.connect(new InetSocketAddress("127.0.0.1", 1234));    
     result.get();
-    FunctionResult res = new FunctionResult(10+1);
+    FunctionResult res = new FunctionResult(Integer.parseInt(args[0])-1);
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     ObjectOutputStream oos = new ObjectOutputStream(bos);
     oos.writeObject(res);
     ByteBuffer buffer = ByteBuffer.wrap(bos.toByteArray());
-    Future<Integer> writeval = client.write(buffer);
-    writeval.get();
-  }
-
-  public static void main(int n) throws Exception {
-    
-    // return new FunctionResult(n + 1);
+    client.write(buffer);  
   }
 }

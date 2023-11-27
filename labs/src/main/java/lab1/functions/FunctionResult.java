@@ -1,4 +1,4 @@
-package Java.Functions;
+package lab1.functions;
 
 import java.io.Serializable;
 

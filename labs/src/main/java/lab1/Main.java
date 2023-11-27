@@ -1,6 +1,6 @@
-package Java;
+package lab1;
 
-import Java.Manager.Manager;
+import lab1.manager.Manager;
 
 public class Main {
   public static void main(String[] args) {
