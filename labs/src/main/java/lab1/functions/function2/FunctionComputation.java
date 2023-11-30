@@ -98,15 +98,15 @@ public class FunctionComputation {
       result = Function.compfunc(n);
       if (result.isEmpty()) {
         if (error.getNonCriticalCounter() == maxErrors) {
-          error.setNonCriticalLimit();
-          return new FunctionResult(error);
+          error.setIsNonCriticalLimit();
+          return new FunctionResult(error, true);
         }
         error.addNonCritical();
       } else if (result.get().isEmpty()) {
-        error.setCritical();
-        return new FunctionResult(error);
+        error.setIsCritical();
+        return new FunctionResult(error, true);
       } else {
-        return new FunctionResult(result.get().get());
+        return new FunctionResult(result.get().get(), true);
       }
     }        
   }

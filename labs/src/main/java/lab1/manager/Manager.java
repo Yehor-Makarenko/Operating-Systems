@@ -13,10 +13,10 @@ import lab1.functions.FunctionResult;
 
 public class Manager {
   public static void compute(int n) throws Exception { 
-    // ProcessBuilder pb1 = new ProcessBuilder("java.exe", "-cp", "labs/target/classes", "lab1.functions.function1.FunctionComputation", String.valueOf(n));        
-    // ProcessBuilder pb2 = new ProcessBuilder("java.exe", "-cp", "labs/target/classes", "lab1.functions.function2.FunctionComputation", String.valueOf(n));            
-    // pb1.start();
-    // pb2.start();
+    ProcessBuilder pb1 = new ProcessBuilder("java.exe", "-cp", "labs/target/classes", "lab1.functions.function1.FunctionComputation", String.valueOf(n));        
+    ProcessBuilder pb2 = new ProcessBuilder("java.exe", "-cp", "labs/target/classes", "lab1.functions.function2.FunctionComputation", String.valueOf(n));            
+    pb1.start();
+    pb2.start();
           
     AsynchronousServerSocketChannel server = AsynchronousServerSocketChannel.open();
     server.bind(new InetSocketAddress("127.0.0.1", 1234));          

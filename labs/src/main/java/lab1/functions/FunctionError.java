@@ -1,6 +1,9 @@
 package lab1.functions;
 
-public class FunctionError {
+import java.io.Serializable;
+
+public class FunctionError implements Serializable {
+  private static final long serialVersionUID = 1L;
   private String functionName;
   private int nonCriticalCounter = 0;
   private boolean isCritical = false;
@@ -10,11 +13,11 @@ public class FunctionError {
     this.functionName = functionName;
   }
 
-  public void setCritical() {
+  public void setIsCritical() {
     isCritical = true;
   }
 
-  public void setNonCriticalLimit() {
+  public void setIsNonCriticalLimit() {
     isNonCriticalLimit = true;
   }
 

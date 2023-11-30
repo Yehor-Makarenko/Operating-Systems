@@ -17,13 +17,13 @@ import lab1.functions.FunctionError;
 import lab1.functions.FunctionResult;
 
 public class FunctionComputation {  
-  private static int n = 0;
+  private static int n = 2;
   private static FunctionError error = new FunctionError("f");
   private static ByteBuffer buffer;
   private static AsynchronousSocketChannel client;
 
   public static void main(String[] args) throws Exception {        
-    // n = Integer.parseInt(args[0]);
+    n = Integer.parseInt(args[0]);
     client = AsynchronousSocketChannel.open();
     Future<Void> result = client.connect(new InetSocketAddress("127.0.0.1", 1234));    
     result.get();
@@ -47,7 +47,10 @@ public class FunctionComputation {
       e.printStackTrace();
     }
 
-    while (client.isOpen()) {}
+    while (client.isOpen()) {
+      Thread.sleep(100);
+      n--;
+    }
   }
 
   private static FunctionResult getFunctionResult() {
