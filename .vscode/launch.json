@@ -6,6 +6,13 @@
   "configurations": [
     {
       "type": "java",
+      "name": "FunctionComputation",
+      "request": "launch",
+      "mainClass": "lab1.functions.function1.FunctionComputation",
+      "projectName": "labs"
+    },
+    {
+      "type": "java",
       "name": "Test",
       "request": "launch",
       "mainClass": "lab1.functions.Test",
