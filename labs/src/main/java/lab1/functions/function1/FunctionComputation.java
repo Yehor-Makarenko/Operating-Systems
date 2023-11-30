@@ -1,10 +1,8 @@
 package lab1.functions.function1;
 
-import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
 import java.io.IOException;
-import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.net.InetSocketAddress;
 import java.nio.ByteBuffer;
@@ -18,67 +16,38 @@ import java.util.concurrent.Future;
 import lab1.functions.FunctionError;
 import lab1.functions.FunctionResult;
 
-public class FunctionComputation {
-  private static int n;
+public class FunctionComputation {  
+  private static int n = 0;
   private static FunctionError error = new FunctionError("f");
   private static ByteBuffer buffer;
   private static AsynchronousSocketChannel client;
 
   public static void main(String[] args) throws Exception {        
-    n = Integer.parseInt(args[0]);
+    // n = Integer.parseInt(args[0]);
     client = AsynchronousSocketChannel.open();
     Future<Void> result = client.connect(new InetSocketAddress("127.0.0.1", 1234));    
     result.get();
     buffer = ByteBuffer.allocate(1024);
 
-    readMessage();
+    readMessage();    
     
-    // FunctionResult res = getFunctionResult();
-    // ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    // ObjectOutputStream oos;
-    // try {
-    //   oos = new ObjectOutputStream(bos);
-    //   oos.writeObject(res);
-    // } catch (IOException e) {        
-    //   e.printStackTrace();
-    // }
-    // buffer = ByteBuffer.wrap(bos.toByteArray());
-    // Future<Integer> writeResult = client.write(buffer);
-    // try {
-    //   writeResult.get();
-    // } catch (InterruptedException | ExecutionException e) {        
-    //   e.printStackTrace();
-    // }
+    FunctionResult res = getFunctionResult();
+    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    ObjectOutputStream oos;
+    try {
+      oos = new ObjectOutputStream(bos);
+      oos.writeObject(res);
+    } catch (IOException e) {        
+      e.printStackTrace();
+    }
+    Future<Integer> writeResult = client.write(ByteBuffer.wrap(bos.toByteArray()));
+    try {
+      writeResult.get();
+    } catch (InterruptedException | ExecutionException e) {        
+      e.printStackTrace();
+    }
 
-    // while (true) {
-    //   Future<Integer> readResult = client.read(buffer);
-    //   String command = new String(buffer.array()).trim();
-    //   readResult.get();
-    //   buffer.flip();
-    //   if (command == "Report") {        
-    //     ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    //     ObjectOutputStream oos = new ObjectOutputStream(bos);
-    //     oos.writeObject(new FunctionResult(error));        
-    //     synchronized (buffer) {
-    //       buffer = ByteBuffer.wrap(bos.toByteArray());
-    //       Future<Integer> writeResult = client.write(buffer);
-    //       writeResult.get();
-    //     }        
-    //   } else if (command == "Exit") {
-    //     ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    //     ObjectOutputStream oos = new ObjectOutputStream(bos);
-    //     oos.writeObject(new FunctionResult(error));        
-    //     synchronized (buffer) {
-    //       buffer = ByteBuffer.wrap(bos.toByteArray());
-    //       Future<Integer> writeResult = client.write(buffer);
-    //       writeResult.get();
-    //     } 
-    //     buffer.clear();
-    //     break;
-    //   }
-      
-    //   buffer.flip();
-    // }
+    while (client.isOpen()) {}
   }
 
   private static FunctionResult getFunctionResult() {
@@ -95,58 +64,50 @@ public class FunctionComputation {
       result = Function.compfunc(n);
       if (result.isEmpty()) {
         if (error.getNonCriticalCounter() == maxErrors) {
-          error.setNonCriticalLimit();
-          return new FunctionResult(error);
+          error.setIsNonCriticalLimit();
+          return new FunctionResult(error, true);
         }
         error.addNonCritical();
       } else if (result.get().isEmpty()) {
-        error.setCritical();
-        return new FunctionResult(error);
+        error.setIsCritical();
+        return new FunctionResult(error, true);
       } else {
-        return new FunctionResult(result.get().get());
+        return new FunctionResult(result.get().get(), true);
       }
     }        
   }
 
-  private static void readMessage() {
+  private static void readMessage() throws Exception {
     client.read(buffer, null, new CompletionHandler<Integer, Void>() {
       @Override
       public void completed(Integer result, Void attachment) {        
         if (result == -1) {
-          client.close();
+          try {
+            client.close();
+          } catch (IOException e) {            
+            e.printStackTrace();
+          }
           return;
         }        
 
         buffer.flip();
-        String data = new String(buffer.array());
-        if (data == "Report") {
-          handleReport();
+        byte[] data = new byte[buffer.remaining()];
+        buffer.get(data);
+        buffer.clear();
+        String message = new String(data);
+        if (message.equals("Report")) {
+          try {
+            handleReport();
+          } catch (Exception e) {            
+            e.printStackTrace();
+          }
+        } else if (message.equals("Close")) {
+          try {
+            handleClose();
+          } catch (Exception e) {            
+            e.printStackTrace();
+          }
         }
-      }
-
-      @Override
-      public void failed(Throwable arg0, Void arg1) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'failed'");
-      }
-      
-    })
-  }
-
-  private static void handleReport() throws Exception {
-    ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    ObjectOutputStream oos = new ObjectOutputStream(bos);
-    oos.writeObject(new FunctionResult(error));   
-    ByteBuffer buffer = ByteBuffer.wrap(bos.toByteArray());
-    client.write(buffer, null, new CompletionHandler<Integer, Void>() {
-      @Override
-      public void completed(Integer result, Void arg1) {        
-        if (result == -1) {
-          client.close();
-          return;
-        }
-
-        readMessage();
       }
 
       @Override
@@ -154,7 +115,71 @@ public class FunctionComputation {
         throw new UnsupportedOperationException("Unimplemented method 'failed'");
       }
       
-    })
+    });
+  }
 
+  private static void handleReport() throws Exception {    
+    ByteBuffer buffer = serializeFunctionResult();
+    client.write(buffer, null, new CompletionHandler<Integer, Void>() {
+      @Override
+      public void completed(Integer result, Void arg1) {        
+        if (result == -1) {
+          try {
+            client.close();
+          } catch (IOException e) {            
+            e.printStackTrace();
+          }
+          return;
+        }
+
+        try {          
+          readMessage();
+        } catch (Exception e) {          
+          e.printStackTrace();
+        }
+      }
+
+      @Override
+      public void failed(Throwable arg0, Void arg1) {        
+        throw new UnsupportedOperationException("Unimplemented method 'failed'");
+      }      
+    });
+  }
+
+  private static void handleClose() throws Exception {
+    ByteBuffer buffer = serializeFunctionResult();
+    client.write(buffer, null, new CompletionHandler<Integer, Void>() {
+      @Override
+      public void completed(Integer result, Void arg1) {        
+        if (result == -1) {
+          try {
+            client.close();
+          } catch (IOException e) {            
+            e.printStackTrace();
+          }
+          return;
+        }
+
+        buffer.clear();
+        try {
+          client.close();
+        } catch (IOException e) {          
+          e.printStackTrace();
+        }
+      }
+
+      @Override
+      public void failed(Throwable arg0, Void arg1) {        
+        throw new UnsupportedOperationException("Unimplemented method 'failed'");
+      }      
+    });
+  }
+
+  private static ByteBuffer serializeFunctionResult() throws Exception {
+    ByteArrayOutputStream bos = new ByteArrayOutputStream();
+    ObjectOutputStream oos = new ObjectOutputStream(bos);
+    oos.writeObject(new FunctionResult(error, false));   
+    ByteBuffer buffer = ByteBuffer.wrap(bos.toByteArray());
+    return buffer;
   }
 }
