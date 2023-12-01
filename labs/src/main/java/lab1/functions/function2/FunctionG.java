@@ -3,7 +3,7 @@ package lab1.functions.function2;
 import java.util.Optional;
 import java.util.concurrent.TimeUnit;
 
-public class Function {
+public class FunctionG {
   final static int CASE1_ATTEMPTS = 3;
   static int attempt = CASE1_ATTEMPTS;
   public static Optional<Optional<Double>> compfunc(int n) { 

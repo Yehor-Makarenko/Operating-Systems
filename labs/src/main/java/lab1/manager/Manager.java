@@ -9,7 +9,7 @@ import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
 import java.util.concurrent.Future;
 
-import lab1.functions.FunctionResult;
+import lab1.functions.functionResult.FunctionResult;
 
 public class Manager {
   public static void compute(int n) throws Exception { 

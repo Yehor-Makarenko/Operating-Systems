@@ -1,4 +1,4 @@
-package lab1.functions;
+package lab1.functions.functionResult;
 
 import java.io.Serializable;
 

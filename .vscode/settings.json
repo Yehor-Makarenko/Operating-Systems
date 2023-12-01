@@ -2,5 +2,6 @@
   "java.project.sourcePaths": [
     "Lab1/src",
     "labs/src/main/java/os"
-  ]
+  ],
+  "java.debug.settings.onBuildFailureProceed": true
 }

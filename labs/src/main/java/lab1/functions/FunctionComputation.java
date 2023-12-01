@@ -1,4 +1,4 @@
-package lab1.functions.function1;
+package lab1.functions;
 
 import java.io.ByteArrayOutputStream;
 import java.io.FileInputStream;
@@ -13,17 +13,23 @@ import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
 
-import lab1.functions.FunctionError;
-import lab1.functions.FunctionResult;
+import lab1.functions.functionResult.FunctionError;
+import lab1.functions.functionResult.FunctionResult;
 
-public class FunctionComputation {  
-  private static int n = 2;
-  private static FunctionError error = new FunctionError("f");
+public class FunctionComputation {
+  private static int n;
+  private static Function f;
+  private static String functionName;
+  private static FunctionError error;  
   private static ByteBuffer buffer;
   private static AsynchronousSocketChannel client;
 
-  public static void main(String[] args) throws Exception {        
-    n = Integer.parseInt(args[0]);
+  public static void compfunc(int n, Function f, String functionName) throws Exception {
+    FunctionComputation.n = n;
+    FunctionComputation.f = f;
+    FunctionComputation.functionName = functionName;
+    error = new FunctionError(functionName);
+
     client = AsynchronousSocketChannel.open();
     Future<Void> result = client.connect(new InetSocketAddress("127.0.0.1", 1234));    
     result.get();
@@ -48,8 +54,6 @@ public class FunctionComputation {
     }
 
     while (client.isOpen()) {
-      Thread.sleep(100);
-      n--;
     }
   }
 
@@ -64,18 +68,18 @@ public class FunctionComputation {
 
     Optional<Optional<Double>> result;
     while (true) {
-      result = Function.compfunc(n);
+      result = f.compfunc(n);
       if (result.isEmpty()) {
         if (error.getNonCriticalCounter() == maxErrors) {
           error.setIsNonCriticalLimit();
-          return new FunctionResult(error, true);
+          return new FunctionResult(functionName, error, true);
         }
         error.addNonCritical();
       } else if (result.get().isEmpty()) {
         error.setIsCritical();
-        return new FunctionResult(error, true);
+        return new FunctionResult(functionName, error, true);
       } else {
-        return new FunctionResult(result.get().get(), true);
+        return new FunctionResult(functionName, result.get().get(), error, true);
       }
     }        
   }
@@ -181,7 +185,7 @@ public class FunctionComputation {
   private static ByteBuffer serializeFunctionResult() throws Exception {
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     ObjectOutputStream oos = new ObjectOutputStream(bos);
-    oos.writeObject(new FunctionResult(error, false));   
+    oos.writeObject(new FunctionResult(functionName, error, false));   
     ByteBuffer buffer = ByteBuffer.wrap(bos.toByteArray());
     return buffer;
   }
