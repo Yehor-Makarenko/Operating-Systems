@@ -9,38 +9,69 @@ import java.nio.ByteBuffer;
 import java.nio.channels.AsynchronousServerSocketChannel;
 import java.nio.channels.AsynchronousSocketChannel;
 import java.nio.channels.CompletionHandler;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Properties;
-import java.util.Scanner;
 import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import javax.swing.*;
 
+import lab1.Main;
 import lab1.functions.functionResult.FunctionResult;
 
 public class TestManager {
-  private static int timeLimit;    
-  private static int n;
-  private static Semaphore canFinish = new Semaphore(2);
-  private static FunctionResult result1;
-  private static FunctionResult result2;
-  private static AsynchronousSocketChannel client1;
-  private static AsynchronousSocketChannel client2;
-  private static Process p1;
-  private static Process p2;
-  private static boolean hasResult = true;
-  private static boolean isTimeExceeded = false;
-  private static boolean isUserCanceled = false;
-  private static boolean isCanceled = false;
-  private static boolean isDone = false;
-  private static JFrame frame;
-  private static JButton menuButton = new JButton("Open menu");   ;
-  private static JPanel mainPanel;
-  private static JTextArea output = new JTextArea();
+  private int timeLimit;    
+  private int n;
+  private Map<Integer, FunctionResult> errorsCache;
+  private Semaphore canFinish;
+  private FunctionResult result1;
+  private FunctionResult result2;
+  private AsynchronousServerSocketChannel server;
+  private AsynchronousSocketChannel client1;
+  private AsynchronousSocketChannel client2;
+  private Process p1;
+  private Process p2;
+  private boolean hasResult;
+  private boolean isTimeExceeded;
+  private boolean isUserCanceled;
+  private boolean isCanceled;
+  private boolean isDone;
+  private JFrame frame;
+  private JButton menuButton;
+  private JPanel mainPanel;
+  private JTextArea output;
 
-  public static void compute(JFrame frame, int n) throws Exception {  
-    TestManager.n = n; 
-    TestManager.frame = frame;  
+  public TestManager(JFrame frame) {
+    errorsCache = new HashMap<>();   
+    this.frame = frame;  
+    init();
+  }
+
+  private void init() {
+    canFinish = new Semaphore(2);
+    result1 = null;
+    result2 = null;
+    client1 = null;
+    client2 = null;
+    hasResult = true;
+    isTimeExceeded = false;
+    isUserCanceled = false;
+    isCanceled = false;
+    isDone = false;
+  }
+
+  public void compute(int n) throws Exception {  
+    this.n = n; 
+    init();
+
+    if (errorsCache.containsKey(n)) {
+      createUI();
+      output.append("Get from cache: cannot get result. Report:" + errorsCache.get(n) + "\n\n"); 
+      addReturnButton();
+      return;
+    }
+
     Properties props = new Properties();
     try {
       props.load(new FileInputStream("labs/src/main/resources/config.properties"));
@@ -51,8 +82,8 @@ public class TestManager {
     ProcessBuilder pb1 = new ProcessBuilder("java.exe", "-cp", "labs/target/classes", "lab1.functions.function1.FunctionFComputation", String.valueOf(n));        
     ProcessBuilder pb2 = new ProcessBuilder("java.exe", "-cp", "labs/target/classes", "lab1.functions.function2.FunctionGComputation", String.valueOf(n));            
     
-    AsynchronousServerSocketChannel server = AsynchronousServerSocketChannel.open();
-    server.bind(new InetSocketAddress("127.0.0.1", 1234));          
+    server = AsynchronousServerSocketChannel.open();
+    server.bind(new InetSocketAddress("127.0.0.1", 1234));        
     
     p1 = pb1.start();    
     p2 = pb2.start();
@@ -92,7 +123,7 @@ public class TestManager {
     createUI();
   }  
 
-  private static CompletableFuture<FunctionResult> setTimeLimit(AsynchronousSocketChannel client) {
+  private CompletableFuture<FunctionResult> setTimeLimit(AsynchronousSocketChannel client) {
     CompletableFuture<FunctionResult> future = new CompletableFuture<>();
     future.orTimeout(timeLimit, TimeUnit.MILLISECONDS);
     future.whenComplete((result, throwable) -> {
@@ -111,7 +142,7 @@ public class TestManager {
     return future;
   }
 
-  private static void readMessage(AsynchronousSocketChannel client, ByteBuffer buffer, CompletableFuture<FunctionResult> futureClient) {
+  private void readMessage(AsynchronousSocketChannel client, ByteBuffer buffer, CompletableFuture<FunctionResult> futureClient) {
     client.read(buffer, null, new CompletionHandler<Integer, Void>() {
       @Override
       public void completed(Integer result, Void attachment) {
@@ -141,7 +172,7 @@ public class TestManager {
     });
   }
 
-  private static void handleResult(FunctionResult result) {  
+  private void handleResult(FunctionResult result) {  
     try {
       canFinish.acquire(2);
     } catch (InterruptedException e) {          
@@ -194,13 +225,13 @@ public class TestManager {
     canFinish.release(2);
   }  
 
-  private static void getReport() {
+  private void getReport() {
     String message = "Report";
     client1.write(ByteBuffer.wrap(message.getBytes()));
     client2.write(ByteBuffer.wrap(message.getBytes()));
   }
 
-  private static void stopCalculations() {  
+  private void stopCalculations() {  
     if (isCanceled) {
       canFinish.release(2);
       return;
@@ -211,7 +242,7 @@ public class TestManager {
     client2.write(ByteBuffer.wrap(message.getBytes()));
   }
 
-  private static FunctionResult getFunctionResult(ByteBuffer buffer) {
+  private FunctionResult getFunctionResult(ByteBuffer buffer) {
     buffer.flip();
     byte[] rb = new byte[buffer.remaining()];
     buffer.get(rb);
@@ -232,16 +263,17 @@ public class TestManager {
     return res;
   }
 
-  private static void createUI() {           
+  private void createUI() {        
+    output = new JTextArea();   
     output.setEditable(false);
+    menuButton = new JButton("Open menu");    
     JScrollPane scrollPane = new JScrollPane(output);
     mainPanel = new JPanel(null);
     
     menuButton.addActionListener(e -> {
       openMenu();
     });
-
-    frame.setSize(500, 800);           
+        
     menuButton.setBounds(200, 150, 100, 30);    
     scrollPane.setBounds(50, 300, 400, 400);
   
@@ -250,13 +282,9 @@ public class TestManager {
     frame.setContentPane(mainPanel);
     frame.revalidate();
     frame.repaint();
-    
-    frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
-    frame.setLayout(null);
-    frame.setVisible(true);   
   }
 
-  private static void openMenu() {
+  private void openMenu() {
     try {
       canFinish.acquire(2);
     } catch (InterruptedException e) {      
@@ -291,13 +319,19 @@ public class TestManager {
     frame.repaint();
   }
 
-  private static void finishCalculations() {
+  private void finishCalculations() {
+    menuButton.setEnabled(false);
+
     if (isDone) {
       return;
     }
     isDone = true;
 
-    menuButton.setEnabled(false);
+    if (result1.getError().getIsCritical()) {
+      errorsCache.put(n, result1);
+    } else if (result2.getError().getIsCritical()) {
+      errorsCache.put(n, result2);
+    }
 
     if (isUserCanceled) {
       output.append("User has canceled computations. Report:" + result1 + result2 + "\n\n");      
@@ -311,5 +345,25 @@ public class TestManager {
       int res = (int) result1.getResult() ^ (int) result2.getResult();
       output.append("f(" + n + ")XORg(" + n + ") = " + res + "\n\n");
     }
+    try {
+      server.close();
+    } catch (IOException e) {      
+      e.printStackTrace();
+    }
+
+    addReturnButton();
+  }
+
+  private void addReturnButton() {
+    JButton returnButton = new JButton("Return");        
+
+    returnButton.addActionListener(e -> {
+      Main.start();
+    });
+
+    returnButton.setBounds(200, 220, 100, 30);
+    mainPanel.add(returnButton);
+    frame.revalidate();
+    frame.repaint();
   }
 }

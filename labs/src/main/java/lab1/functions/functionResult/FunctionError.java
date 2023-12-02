@@ -8,6 +8,10 @@ public class FunctionError implements Serializable {
   private boolean isCritical = false;
   private boolean isNonCriticalLimit = false;
 
+  public boolean getIsCritical() {
+    return isCritical;
+  }
+
   public void setIsCritical() {
     isCritical = true;
   }
