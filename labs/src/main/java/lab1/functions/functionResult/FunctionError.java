@@ -4,14 +4,9 @@ import java.io.Serializable;
 
 public class FunctionError implements Serializable {
   private static final long serialVersionUID = 1L;
-  private String functionName;
   private int nonCriticalCounter = 0;
   private boolean isCritical = false;
   private boolean isNonCriticalLimit = false;
-
-  public FunctionError(String functionName) {
-    this.functionName = functionName;
-  }
 
   public void setIsCritical() {
     isCritical = true;
@@ -29,15 +24,14 @@ public class FunctionError implements Serializable {
     return nonCriticalCounter;
   }
 
-  public void print() {
-    if (isCritical) {
-      System.out.println("Function " + functionName + ", critical error");
-      return;
+  @Override
+  public String toString() {    
+    if (isCritical) {      
+      return "\nError: critical error";
     }
-    if (isNonCriticalLimit) {
-      System.out.println("Function " + functionName + ", non critical errors limit: " + nonCriticalCounter + " errors");
-      return;
+    if (isNonCriticalLimit) {      
+      return "\nError: non critical errors limit, " + nonCriticalCounter + " errors";
     }
-    System.out.println("Function " + functionName + ", non critical errors: " + nonCriticalCounter);
+    return "\nError: no critical error. Non critical errors: " + nonCriticalCounter;
   }
 }

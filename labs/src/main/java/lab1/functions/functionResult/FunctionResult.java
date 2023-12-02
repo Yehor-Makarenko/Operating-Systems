@@ -10,10 +10,10 @@ public class FunctionResult implements Serializable {
   private Double result = null;
   private FunctionError error = null;
 
-  public FunctionResult(String functionName, double result, FunctionError error, boolean isComputed) {
+  public FunctionResult(String functionName, Double result, FunctionError error, boolean isComputed) {
     this.functionName = functionName;
     this.isComputed = isComputed;
-    isResult = true;
+    isResult = result == null ? false : true;
     this.result = result;
     this.error = error;
   }
@@ -43,5 +43,10 @@ public class FunctionResult implements Serializable {
 
   public boolean getIsComputed() {
     return isComputed;
+  }
+
+  @Override
+  public String toString() {
+    return "\nFunction: " + functionName + "\nResult: " + result + error;            
   }
 }

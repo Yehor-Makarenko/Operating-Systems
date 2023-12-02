@@ -21,6 +21,7 @@ public class FunctionComputation {
   private static Function f;
   private static String functionName;
   private static FunctionError error;  
+  private static Double compResult = null;
   private static ByteBuffer buffer;
   private static AsynchronousSocketChannel client;
 
@@ -28,7 +29,7 @@ public class FunctionComputation {
     FunctionComputation.n = n;
     FunctionComputation.f = f;
     FunctionComputation.functionName = functionName;
-    error = new FunctionError(functionName);
+    error = new FunctionError();
 
     client = AsynchronousSocketChannel.open();
     Future<Void> result = client.connect(new InetSocketAddress("127.0.0.1", 1234));    
@@ -79,6 +80,7 @@ public class FunctionComputation {
         error.setIsCritical();
         return new FunctionResult(functionName, error, true);
       } else {
+        compResult = result.get().get();
         return new FunctionResult(functionName, result.get().get(), error, true);
       }
     }        
@@ -126,7 +128,7 @@ public class FunctionComputation {
   }
 
   private static void handleReport() throws Exception {    
-    ByteBuffer buffer = serializeFunctionResult();
+    ByteBuffer buffer = serializeFunctionResult(false);
     client.write(buffer, null, new CompletionHandler<Integer, Void>() {
       @Override
       public void completed(Integer result, Void arg1) {        
@@ -154,38 +156,14 @@ public class FunctionComputation {
   }
 
   private static void handleClose() throws Exception {
-    ByteBuffer buffer = serializeFunctionResult();
-    client.write(buffer, null, new CompletionHandler<Integer, Void>() {
-      @Override
-      public void completed(Integer result, Void arg1) {        
-        if (result == -1) {
-          try {
-            client.close();
-          } catch (IOException e) {            
-            e.printStackTrace();
-          }
-          return;
-        }
-
-        buffer.clear();
-        try {
-          client.close();
-        } catch (IOException e) {          
-          e.printStackTrace();
-        }
-      }
-
-      @Override
-      public void failed(Throwable arg0, Void arg1) {        
-        throw new UnsupportedOperationException("Unimplemented method 'failed'");
-      }      
-    });
+    ByteBuffer buffer = serializeFunctionResult(true);
+    client.write(buffer);
   }
 
-  private static ByteBuffer serializeFunctionResult() throws Exception {
+  private static ByteBuffer serializeFunctionResult(boolean isComputed) throws Exception {
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     ObjectOutputStream oos = new ObjectOutputStream(bos);
-    oos.writeObject(new FunctionResult(functionName, error, false));   
+    oos.writeObject(new FunctionResult(functionName, compResult, error, isComputed));   
     ByteBuffer buffer = ByteBuffer.wrap(bos.toByteArray());
     return buffer;
   }
