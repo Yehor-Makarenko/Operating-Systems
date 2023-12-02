@@ -32,6 +32,7 @@ public class TestManager {
   private static boolean isTimeExceeded = false;
   private static boolean isUserCanceled = false;
   private static boolean isCanceled = false;
+  private static boolean isDone = false;
   private static JFrame frame;
   private static JButton menuButton = new JButton("Open menu");   ;
   private static JPanel mainPanel;
@@ -48,7 +49,7 @@ public class TestManager {
     }
     timeLimit = Integer.parseInt(props.getProperty("time_limit"));
     ProcessBuilder pb1 = new ProcessBuilder("java.exe", "-cp", "labs/target/classes", "lab1.functions.function1.FunctionFComputation", String.valueOf(n));        
-    ProcessBuilder pb2 = new ProcessBuilder("java.exe", "-cp", "labs/target/classes", "lab1.functions.function2.FunctionComputation", String.valueOf(n));            
+    ProcessBuilder pb2 = new ProcessBuilder("java.exe", "-cp", "labs/target/classes", "lab1.functions.function2.FunctionGComputation", String.valueOf(n));            
     
     AsynchronousServerSocketChannel server = AsynchronousServerSocketChannel.open();
     server.bind(new InetSocketAddress("127.0.0.1", 1234));          
@@ -59,6 +60,22 @@ public class TestManager {
     server.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
       @Override
       public void completed(AsynchronousSocketChannel client, Void attachment) {
+        server.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
+          @Override
+          public void completed(AsynchronousSocketChannel client, Void attachment) {
+            client2 = client;
+            CompletableFuture<FunctionResult> clientFuture = setTimeLimit(client);        
+            readMessage(client, ByteBuffer.allocate(1024), clientFuture);
+          }
+
+          @Override
+          public void failed(Throwable exc, Void attachment) {
+            // TODO Auto-generated method stub
+            throw new UnsupportedOperationException("Unimplemented method 'failed'");
+          }
+          
+        });
+
         client1 = client;
         CompletableFuture<FunctionResult> clientFuture = setTimeLimit(client);        
         readMessage(client, ByteBuffer.allocate(1024), clientFuture);
@@ -70,23 +87,7 @@ public class TestManager {
         throw new UnsupportedOperationException("Unimplemented method 'failed'");
       }
       
-    });
-
-    server.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
-      @Override
-      public void completed(AsynchronousSocketChannel client, Void attachment) {
-        client2 = client;
-        CompletableFuture<FunctionResult> clientFuture = setTimeLimit(client);        
-        readMessage(client, ByteBuffer.allocate(1024), clientFuture);
-      }
-
-      @Override
-      public void failed(Throwable exc, Void attachment) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'failed'");
-      }
-      
-    });
+    });    
     
     createUI();
   }  
@@ -141,62 +142,56 @@ public class TestManager {
   }
 
   private static void handleResult(FunctionResult result) {  
-    if (result.getFunctionName().equals("f")) {   
+    try {
+      canFinish.acquire(2);
+    } catch (InterruptedException e) {          
+      e.printStackTrace();
+    }
+
+    if (result.getFunctionName().equals("f")) {             
       if (result1 != null) {
+        canFinish.release(2);
         return;
-      }         
-      result1 = result;
+      }        
+      result1 = result; 
 
       if (result2 != null) {
-        try {
-          canFinish.acquire(2);
-        } catch (InterruptedException e) {          
-          e.printStackTrace();
-        }
         finishCalculations();
-        canFinish.release(2);
-      }
-      else if (!result.hasResult()) {
         try {
-          canFinish.acquire(2);
-        } catch (InterruptedException e) {          
+          client1.close();
+          client2.close();
+          p1.destroy();
+          p2.destroy();
+        } catch (IOException e) {        
           e.printStackTrace();
         }
-
-      }
-
-      try {
-        canFinish.acquire();        
-        
-        canFinish.release();
-      } catch (InterruptedException e) {        
-        e.printStackTrace();
-      }
-      try {
-        client1.close();
-        p1.destroy();
-      } catch (IOException e) {        
-        e.printStackTrace();
-      }
-    } else if (result.getFunctionName().equals("g")) {   
-      if (result1 != null) {
+      } else if (!result.hasResult()) {
+        hasResult = false;
+        stopCalculations();        
+      } 
+    } else if (result.getFunctionName().equals("g")) {           
+      if (result2 != null) {
+        canFinish.release(2);
         return;
       }         
-      result1 = result;
-      try {
-        canFinish.acquire();
+      result2 = result;
+
+      if (result1 != null) {
         finishCalculations();
-        canFinish.release();
-      } catch (InterruptedException e) {        
-        e.printStackTrace();
-      }
-      try {
-        client1.close();
-        p1.destroy();
-      } catch (IOException e) {        
-        e.printStackTrace();
+        try {
+          client1.close();
+          client2.close();
+          p1.destroy();
+          p2.destroy();
+        } catch (IOException e) {        
+          e.printStackTrace();
+        }
+      } else if (!result.hasResult()) {
+        hasResult = false;
+        stopCalculations();
       }
     }
+    canFinish.release(2);
   }  
 
   private static void getReport() {
@@ -253,6 +248,8 @@ public class TestManager {
     mainPanel.add(menuButton);  
     mainPanel.add(scrollPane);
     frame.setContentPane(mainPanel);
+    frame.revalidate();
+    frame.repaint();
     
     frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     frame.setLayout(null);
@@ -295,16 +292,24 @@ public class TestManager {
   }
 
   private static void finishCalculations() {
+    if (isDone) {
+      return;
+    }
+    isDone = true;
+
     menuButton.setEnabled(false);
 
     if (isUserCanceled) {
-      output.append("User has canceled computations. Report:" + result1 + "\n\n");      
+      output.append("User has canceled computations. Report:" + result1 + result2 + "\n\n");      
     } else if (isTimeExceeded) {
-      output.append("Time exceeded. Report:" + result1 + "\n\n");      
+      output.append("Time exceeded. Report:" + result1 + result2 + "\n\n");      
     } else if (!hasResult) {
-      output.append("Cannot get result. Report:" + result1 + "\n\n");      
+      output.append("Cannot get result. Report:" + result1 + result2 + "\n\n");      
     } else {
-      output.append("Result:\nf(" + n + ") = " + result1.getResult() + "\n\n");
+      output.append("Result:\nf(" + n + ") = " + result1.getResult() + "\n");
+      output.append("g(" + n + ") = " + result1.getResult() + "\n");
+      int res = (int) result1.getResult() ^ (int) result2.getResult();
+      output.append("f(" + n + ")XORg(" + n + ") = " + res + "\n\n");
     }
   }
 }
