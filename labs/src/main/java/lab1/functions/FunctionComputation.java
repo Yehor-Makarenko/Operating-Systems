@@ -12,6 +12,7 @@ import java.util.Optional;
 import java.util.Properties;
 import java.util.concurrent.ExecutionException;
 import java.util.concurrent.Future;
+import java.util.concurrent.Semaphore;
 
 import lab1.functions.functionResult.FunctionError;
 import lab1.functions.functionResult.FunctionResult;
@@ -24,10 +25,16 @@ public class FunctionComputation {
   private static Double compResult;
   private static ByteBuffer buffer;
   private static AsynchronousSocketChannel client;
+  private static Thread getResultThread;
+  private static Semaphore writeSemaphore = new Semaphore(1);
+  private static boolean isInterrupted;
 
   private static void init() {
+    getResultThread = Thread.currentThread();
     error = new FunctionError();
     compResult = null;
+    writeSemaphore = new Semaphore(1);
+    isInterrupted = false;
     getN();
   }
 
@@ -71,6 +78,11 @@ public class FunctionComputation {
 
   private static void sendResult() {
     FunctionResult res = getFunctionResult();
+
+    if (res == null || Thread.currentThread().isInterrupted() || isInterrupted) {
+      return;
+    }
+
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     ObjectOutputStream oos;
     try {
@@ -79,12 +91,19 @@ public class FunctionComputation {
     } catch (IOException e) {        
       e.printStackTrace();
     }
+    
+    try {
+      writeSemaphore.acquire();
+    } catch (InterruptedException e) {    
+      return;        
+    }
     Future<Integer> writeResult = client.write(ByteBuffer.wrap(bos.toByteArray()));
     try {
-      writeResult.get();
+      writeResult.get();      
     } catch (InterruptedException | ExecutionException e) {        
       e.printStackTrace();
     }
+    writeSemaphore.release();
   }
 
   private static FunctionResult getFunctionResult() {
@@ -99,6 +118,11 @@ public class FunctionComputation {
     Optional<Optional<Double>> result;
     while (true) {
       result = f.compfunc(n);
+      
+      if (Thread.currentThread().isInterrupted() || isInterrupted) {
+        return null;
+      }
+
       if (result.isEmpty()) {
         if (error.getNonCriticalCounter() == maxErrors) {
           error.setIsNonCriticalLimit();
@@ -155,9 +179,15 @@ public class FunctionComputation {
 
   private static void handleReport() {    
     ByteBuffer buffer = serializeFunctionResult(false);
+    try {
+      writeSemaphore.acquire();
+    } catch (InterruptedException e) {      
+      e.printStackTrace();
+    }
     client.write(buffer, null, new CompletionHandler<Integer, Void>() {
       @Override
-      public void completed(Integer result, Void arg1) {        
+      public void completed(Integer result, Void arg1) { 
+        writeSemaphore.release();       
         if (result == -1) {
           try {
             client.close();
@@ -177,11 +207,19 @@ public class FunctionComputation {
     });
   }
 
-  private static void handleClose() {
+  private static void handleClose() {             
+    try {
+      writeSemaphore.acquire();
+    } catch (InterruptedException e) {      
+      e.printStackTrace();
+    }
+    isInterrupted = true;
+    getResultThread.interrupt();
     ByteBuffer buffer = serializeFunctionResult(true);
     client.write(buffer, null, new CompletionHandler<Integer, Void>() {
       @Override
       public void completed(Integer result, Void arg1) {        
+        writeSemaphore.release();
         if (result == -1) {
           try {
             client.close();

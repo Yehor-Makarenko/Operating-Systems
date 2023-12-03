@@ -103,6 +103,13 @@ public class Manager {
     }
 
     Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+      try {
+        server.close();
+        client1.close();
+        client2.close();
+      } catch (IOException e) {        
+        e.printStackTrace();
+      }
       p1.destroyForcibly();
       p2.destroyForcibly();              
     }));

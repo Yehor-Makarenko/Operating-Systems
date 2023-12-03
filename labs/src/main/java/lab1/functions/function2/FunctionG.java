@@ -36,10 +36,11 @@ public class FunctionG {
       catch (InterruptedException ie) { return Optional.of(Optional.empty()); }
       return Optional.of(Optional.of(3d));
 
-      default:
+    default:
     }
 
-    try { Thread.currentThread().join(); } catch (InterruptedException ie) {} 
+    try { Thread.currentThread().join(); } 
+    catch (InterruptedException ie) { return Optional.of(Optional.empty()); } 
     return Optional.of(Optional.empty());
   }
 }

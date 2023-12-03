@@ -9,11 +9,11 @@ import javax.swing.JTextArea;
 
 import lab1.manager.Manager;
 
-public class Main {
+public class Main {  
   private static JFrame frame = new JFrame("Lab1");  
   private static Manager manager;
 
-  public static void main(String[] args) {    
+  public static void main(String[] args) {      
     frame.setSize(500, 800);   
     frame.setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
     frame.setLayout(null);
