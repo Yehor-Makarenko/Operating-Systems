@@ -146,9 +146,9 @@ public class FunctionComputation {
       }
 
       @Override
-      public void failed(Throwable arg0, Void arg1) {        
-        throw new UnsupportedOperationException("Unimplemented method 'failed'");
-      }
+      public void failed(Throwable arg0, Void arg1) {
+        return;
+      }      
       
     });
   }
@@ -171,8 +171,8 @@ public class FunctionComputation {
       }
 
       @Override
-      public void failed(Throwable arg0, Void arg1) {        
-        throw new UnsupportedOperationException("Unimplemented method 'failed'");
+      public void failed(Throwable arg0, Void arg1) {
+        return;
       }      
     });
   }
@@ -195,9 +195,9 @@ public class FunctionComputation {
       }
 
       @Override
-      public void failed(Throwable arg0, Void arg1) {        
-        throw new UnsupportedOperationException("Unimplemented method 'failed'");
-      }      
+      public void failed(Throwable arg0, Void arg1) {
+        return;
+      }          
     });
   }
 

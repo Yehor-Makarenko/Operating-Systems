@@ -102,6 +102,11 @@ public class Manager {
       e.printStackTrace();
     }
 
+    Runtime.getRuntime().addShutdownHook(new Thread(() -> {
+      p1.destroyForcibly();
+      p2.destroyForcibly();              
+    }));
+
     readMessage(client1, ByteBuffer.allocate(1024));
     readMessage(client2, ByteBuffer.allocate(1024));
   }
@@ -177,7 +182,7 @@ public class Manager {
 
       @Override
       public void failed(Throwable exc, Void attachment) {
-        throw new UnsupportedOperationException("Unimplemented method 'failed'");
+        return;
       }
     });
   }
