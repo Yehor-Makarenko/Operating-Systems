@@ -21,23 +21,47 @@ public class FunctionComputation {
   private static Function f;
   private static String functionName;
   private static FunctionError error;  
-  private static Double compResult = null;
+  private static Double compResult;
   private static ByteBuffer buffer;
   private static AsynchronousSocketChannel client;
 
-  public static void compfunc(int n, Function f, String functionName) throws Exception {
-    FunctionComputation.n = n;
+  private static void init() {
+    error = new FunctionError();
+    compResult = null;
+    getN();
+  }
+
+  public static void compfunc(Function f, String functionName) throws Exception {
     FunctionComputation.f = f;
     FunctionComputation.functionName = functionName;
-    error = new FunctionError();
 
     client = AsynchronousSocketChannel.open();
     Future<Void> result = client.connect(new InetSocketAddress("127.0.0.1", 1234));    
     result.get();
     buffer = ByteBuffer.allocate(1024);
 
-    readMessage();    
+    readMessage();   
     
+    while (client.isOpen()) {
+      
+    }
+  }  
+
+  private static void getN() {
+    Future<Integer> result = client.read(buffer);
+    try {
+      result.get();
+    } catch (InterruptedException | ExecutionException e) {      
+      e.printStackTrace();
+    }
+    buffer.flip();
+    byte[] data = new byte[buffer.remaining()];
+    buffer.get(data);
+    buffer.clear();
+    n = Integer.parseInt(new String(data));
+  }
+
+  private static void sendResult() {
     FunctionResult res = getFunctionResult();
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
     ObjectOutputStream oos;
@@ -52,9 +76,6 @@ public class FunctionComputation {
       writeResult.get();
     } catch (InterruptedException | ExecutionException e) {        
       e.printStackTrace();
-    }
-
-    while (client.isOpen()) {
     }
   }
 
@@ -104,7 +125,16 @@ public class FunctionComputation {
         buffer.get(data);
         buffer.clear();
         String message = new String(data);
-        if (message.equals("Report")) {
+
+        if (message.equals("Start")) {
+          init();
+          try {
+            readMessage();
+          } catch (Exception e) {            
+            e.printStackTrace();
+          }
+          sendResult();
+        } else if (message.equals("Report")) {
           try {
             handleReport();
           } catch (Exception e) {            
@@ -157,7 +187,30 @@ public class FunctionComputation {
 
   private static void handleClose() throws Exception {
     ByteBuffer buffer = serializeFunctionResult(true);
-    client.write(buffer);
+    client.write(buffer, null, new CompletionHandler<Integer, Void>() {
+      @Override
+      public void completed(Integer result, Void arg1) {        
+        if (result == -1) {
+          try {
+            client.close();
+          } catch (IOException e) {            
+            e.printStackTrace();
+          }
+          return;
+        }
+
+        try {          
+          readMessage();
+        } catch (Exception e) {          
+          e.printStackTrace();
+        }
+      }
+
+      @Override
+      public void failed(Throwable arg0, Void arg1) {        
+        throw new UnsupportedOperationException("Unimplemented method 'failed'");
+      }      
+    });
   }
 
   private static ByteBuffer serializeFunctionResult(boolean isComputed) throws Exception {

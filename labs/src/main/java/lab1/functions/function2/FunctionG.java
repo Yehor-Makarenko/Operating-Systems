@@ -1,7 +1,6 @@
 package lab1.functions.function2;
 
 import java.util.Optional;
-import java.util.Random;
 import java.util.concurrent.TimeUnit;
 
 public class FunctionG {
@@ -23,8 +22,18 @@ public class FunctionG {
       attempt = CASE1_ATTEMPTS;
       return Optional.of(Optional.of(5d));
 
+    case 2:
+      try { TimeUnit.MILLISECONDS.sleep(500); }
+      catch (InterruptedException ie) { return Optional.of(Optional.empty()); }
+      attempt--;
+      if (attempt != 0)
+        return Optional.empty();
+      attempt = CASE1_ATTEMPTS + 4;
+      return Optional.of(Optional.of(1d));
+
     case 3:
       try { TimeUnit.SECONDS.sleep(0); }
+      catch (InterruptedException ie) { return Optional.of(Optional.empty()); }
       return Optional.of(Optional.of(3d));
 
       default:

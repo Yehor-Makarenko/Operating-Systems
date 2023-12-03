@@ -19,6 +19,7 @@ public class Main {
     frame.setLayout(null);
     frame.setVisible(true);   
     manager = new Manager(frame);
+    manager.open();
     start();
   }
 

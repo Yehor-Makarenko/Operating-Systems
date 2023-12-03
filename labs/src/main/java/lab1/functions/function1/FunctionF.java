@@ -25,10 +25,12 @@ public class FunctionF {
 
     case 2:
       try { TimeUnit.SECONDS.sleep(1); }
+      catch (InterruptedException ie) { return Optional.of(Optional.empty()); }
       return Optional.of(Optional.of(6d));
 
     case 3:
       try { TimeUnit.SECONDS.sleep(new Random().nextInt(3, 6)); }
+      catch (InterruptedException ie) { return Optional.of(Optional.empty()); }
       return Optional.of(Optional.of(7d));
 
       default:

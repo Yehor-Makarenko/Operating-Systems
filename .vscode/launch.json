@@ -6,6 +6,13 @@
   "configurations": [
     {
       "type": "java",
+      "name": "FunctionGComputation",
+      "request": "launch",
+      "mainClass": "lab1.functions.function2.FunctionGComputation",
+      "projectName": "labs"
+    },
+    {
+      "type": "java",
       "name": "FunctionFComputation",
       "request": "launch",
       "mainClass": "lab1.functions.function1.FunctionFComputation",

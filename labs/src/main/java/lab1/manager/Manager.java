@@ -13,6 +13,8 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Properties;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
+import java.util.concurrent.Future;
 import java.util.concurrent.Semaphore;
 import java.util.concurrent.TimeUnit;
 import javax.swing.*;
@@ -32,6 +34,8 @@ public class Manager {
   private AsynchronousSocketChannel client2;
   private Process p1;
   private Process p2;
+  private CompletableFuture<FunctionResult> futureClient1;
+  private CompletableFuture<FunctionResult> futureClient2;
   private boolean hasResult;
   private boolean isTimeExceeded;
   private boolean isUserCanceled;
@@ -43,8 +47,17 @@ public class Manager {
   private JTextArea output;
 
   public Manager(JFrame frame) {
+    Properties props = new Properties();
+    try {
+      props.load(new FileInputStream("labs/src/main/resources/config.properties"));
+    } catch (IOException e) {      
+      e.printStackTrace();
+    }
+    timeLimit = Integer.parseInt(props.getProperty("time_limit"));    
     errorsCache = new HashMap<>();   
     this.frame = frame;  
+    client1 = null;
+    client2 = null;
     init();
   }
 
@@ -52,13 +65,45 @@ public class Manager {
     canFinish = new Semaphore(2);
     result1 = null;
     result2 = null;
-    client1 = null;
-    client2 = null;
     hasResult = true;
     isTimeExceeded = false;
     isUserCanceled = false;
     isCanceled = false;
     isDone = false;
+  }
+
+  public void open() {
+    ProcessBuilder pb1 = new ProcessBuilder("java.exe", "-cp", "labs/target/classes", "lab1.functions.function1.FunctionFComputation");        
+    ProcessBuilder pb2 = new ProcessBuilder("java.exe", "-cp", "labs/target/classes", "lab1.functions.function2.FunctionGComputation");            
+    
+    try {
+      server = AsynchronousServerSocketChannel.open();
+      server.bind(new InetSocketAddress("127.0.0.1", 1234));        
+      p1 = pb1.start();          
+    } catch (IOException e) {      
+      e.printStackTrace();
+    }            
+
+    Future<AsynchronousSocketChannel> accept = server.accept();
+    try {
+      client1 = accept.get();
+    } catch (InterruptedException | ExecutionException e) {      
+      e.printStackTrace();
+    }
+    try {
+      p2 = pb2.start();
+    } catch (IOException e) {      
+      e.printStackTrace();
+    }  
+    accept = server.accept();
+    try {
+      client2 = accept.get();
+    } catch (InterruptedException | ExecutionException e) {      
+      e.printStackTrace();
+    }
+
+    readMessage(client1, ByteBuffer.allocate(1024));
+    readMessage(client2, ByteBuffer.allocate(1024));
   }
 
   public void compute(int n) throws Exception {  
@@ -71,55 +116,12 @@ public class Manager {
       output.append("Get from cache: cannot get result. Report:" + errorsCache.get(n) + "\n\n"); 
       addReturnButton();
       return;
-    }
-
-    Properties props = new Properties();
-    try {
-      props.load(new FileInputStream("labs/src/main/resources/config.properties"));
-    } catch (IOException e) {      
-      e.printStackTrace();
-    }
-    timeLimit = Integer.parseInt(props.getProperty("time_limit"));
-    ProcessBuilder pb1 = new ProcessBuilder("java.exe", "-cp", "labs/target/classes", "lab1.functions.function1.FunctionFComputation", String.valueOf(n));        
-    ProcessBuilder pb2 = new ProcessBuilder("java.exe", "-cp", "labs/target/classes", "lab1.functions.function2.FunctionGComputation", String.valueOf(n));            
+    }                
     
-    server = AsynchronousServerSocketChannel.open();
-    server.bind(new InetSocketAddress("127.0.0.1", 1234));        
+    futureClient1 = setTimeLimit(client1);
+    futureClient2 = setTimeLimit(client2);
     
-    p1 = pb1.start();    
-    p2 = pb2.start();
-
-    server.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
-      @Override
-      public void completed(AsynchronousSocketChannel client, Void attachment) {
-        server.accept(null, new CompletionHandler<AsynchronousSocketChannel, Void>() {
-          @Override
-          public void completed(AsynchronousSocketChannel client, Void attachment) {
-            client2 = client;
-            CompletableFuture<FunctionResult> clientFuture = setTimeLimit(client);        
-            readMessage(client, ByteBuffer.allocate(1024), clientFuture);
-          }
-
-          @Override
-          public void failed(Throwable exc, Void attachment) {
-            // TODO Auto-generated method stub
-            throw new UnsupportedOperationException("Unimplemented method 'failed'");
-          }
-          
-        });
-
-        client1 = client;
-        CompletableFuture<FunctionResult> clientFuture = setTimeLimit(client);        
-        readMessage(client, ByteBuffer.allocate(1024), clientFuture);
-      }
-
-      @Override
-      public void failed(Throwable exc, Void attachment) {
-        // TODO Auto-generated method stub
-        throw new UnsupportedOperationException("Unimplemented method 'failed'");
-      }
-      
-    });    
+    sendN();
     
     createUI();
   }  
@@ -143,18 +145,26 @@ public class Manager {
     return future;
   }
 
-  private void readMessage(AsynchronousSocketChannel client, ByteBuffer buffer, CompletableFuture<FunctionResult> futureClient) {
+  private void sendN() {
+    try {
+      client1.write(ByteBuffer.wrap("Start".getBytes())).get();
+      client2.write(ByteBuffer.wrap("Start".getBytes())).get();
+      client1.write(ByteBuffer.wrap(String.valueOf(n).getBytes())).get();
+      client2.write(ByteBuffer.wrap(String.valueOf(n).getBytes())).get();
+    } catch (InterruptedException | ExecutionException e) {      
+      e.printStackTrace();
+    }    
+  }
+
+  private void readMessage(AsynchronousSocketChannel client, ByteBuffer buffer) {
     client.read(buffer, null, new CompletionHandler<Integer, Void>() {
       @Override
       public void completed(Integer result, Void attachment) {
         if (!client.isOpen()) return;
         FunctionResult res = getFunctionResult(buffer);
-        readMessage(client, buffer, futureClient); 
+        readMessage(client, buffer); 
 
-        if (res.getIsComputed()) {  
-          if (!isTimeExceeded) {
-            futureClient.complete(res);
-          }      
+        if (res.getIsComputed()) {              
           if (isUserCanceled || isTimeExceeded) {
             canFinish.release();
           }
@@ -174,6 +184,16 @@ public class Manager {
   }
 
   private void handleResult(FunctionResult result) {  
+    if (!result.hasResult()) {
+      hasResult = false;
+    }
+
+    if (result.getFunctionName().equals("f") && !isTimeExceeded) {
+      futureClient1.complete(result);
+    } else if (result.getFunctionName().equals("g") && !isTimeExceeded) {
+      futureClient2.complete(result);
+    }
+
     try {
       canFinish.acquire(2);
     } catch (InterruptedException e) {          
@@ -189,16 +209,7 @@ public class Manager {
 
       if (result2 != null) {
         finishCalculations();
-        try {
-          client1.close();
-          client2.close();
-          p1.destroy();
-          p2.destroy();
-        } catch (IOException e) {        
-          e.printStackTrace();
-        }
       } else if (!result.hasResult()) {
-        hasResult = false;
         stopCalculations();        
       } 
     } else if (result.getFunctionName().equals("g")) {           
@@ -209,17 +220,8 @@ public class Manager {
       result2 = result;
 
       if (result1 != null) {
-        finishCalculations();
-        try {
-          client1.close();
-          client2.close();
-          p1.destroy();
-          p2.destroy();
-        } catch (IOException e) {        
-          e.printStackTrace();
-        }
+        finishCalculations();        
       } else if (!result.hasResult()) {
-        hasResult = false;
         stopCalculations();
       }
     }
@@ -241,6 +243,18 @@ public class Manager {
     String message = "Close";
     client1.write(ByteBuffer.wrap(message.getBytes()));
     client2.write(ByteBuffer.wrap(message.getBytes()));
+  }
+
+  public void close() {
+    try {
+      server.close();
+      client1.close();
+      client2.close();
+    } catch (IOException e) {      
+      e.printStackTrace();
+    }    
+    p1.destroy();
+    p2.destroy();
   }
 
   private FunctionResult getFunctionResult(ByteBuffer buffer) {
@@ -345,14 +359,9 @@ public class Manager {
       output.append("Cannot get result. Report:" + result1 + result2 + "\n\n");      
     } else {
       output.append("Result:\nf(" + n + ") = " + result1.getResult() + "\n");
-      output.append("g(" + n + ") = " + result1.getResult() + "\n");
+      output.append("g(" + n + ") = " + result2.getResult() + "\n");
       int res = (int) result1.getResult() ^ (int) result2.getResult();
       output.append("f(" + n + ")XORg(" + n + ") = " + res + "\n\n");
-    }
-    try {
-      server.close();
-    } catch (IOException e) {      
-      e.printStackTrace();
     }
 
     addReturnButton();
