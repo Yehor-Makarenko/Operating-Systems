@@ -73,8 +73,8 @@ public class Manager {
   }
 
   public void open() {
-    ProcessBuilder pb1 = new ProcessBuilder("java.exe", "-cp", "labs/target/classes", "lab1.functions.function1.FunctionFComputation");        
-    ProcessBuilder pb2 = new ProcessBuilder("java.exe", "-cp", "labs/target/classes", "lab1.functions.function2.FunctionGComputation");            
+    ProcessBuilder pb1 = new ProcessBuilder("java.exe", "-cp", "labs/target/classes", "lab1.functions.function1.FunctionFComputation", "f");        
+    ProcessBuilder pb2 = new ProcessBuilder("java.exe", "-cp", "labs/target/classes", "lab1.functions.function2.FunctionGComputation", "g");            
     
     try {
       server = AsynchronousServerSocketChannel.open();
@@ -106,7 +106,7 @@ public class Manager {
     readMessage(client2, ByteBuffer.allocate(1024));
   }
 
-  public void compute(int n) throws Exception {  
+  public void compute(int n) {  
     this.n = n; 
     init();
 
@@ -141,7 +141,7 @@ public class Manager {
       }        
       stopCalculations();      
     });
-
+    
     return future;
   }
 
@@ -177,9 +177,8 @@ public class Manager {
 
       @Override
       public void failed(Throwable exc, Void attachment) {
-        // TODO Auto-generated method stub
+        throw new UnsupportedOperationException("Unimplemented method 'failed'");
       }
-      
     });
   }
 
@@ -266,7 +265,6 @@ public class Manager {
     try {
       ois = new ObjectInputStream(new ByteArrayInputStream(rb));
     } catch (IOException e) {
-      // TODO Auto-generated catch block
       e.printStackTrace();
     }
     FunctionResult res = null;

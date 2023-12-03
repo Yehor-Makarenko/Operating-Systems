@@ -31,13 +31,21 @@ public class FunctionComputation {
     getN();
   }
 
-  public static void compfunc(Function f, String functionName) throws Exception {
+  public static void compfunc(Function f, String functionName) {
     FunctionComputation.f = f;
     FunctionComputation.functionName = functionName;
 
-    client = AsynchronousSocketChannel.open();
+    try {
+      client = AsynchronousSocketChannel.open();
+    } catch (IOException e) {      
+      e.printStackTrace();
+    }
     Future<Void> result = client.connect(new InetSocketAddress("127.0.0.1", 1234));    
-    result.get();
+    try {
+      result.get();
+    } catch (InterruptedException | ExecutionException e) {      
+      e.printStackTrace();
+    }
     buffer = ByteBuffer.allocate(1024);
 
     readMessage();   
@@ -107,7 +115,7 @@ public class FunctionComputation {
     }        
   }
 
-  private static void readMessage() throws Exception {
+  private static void readMessage() {
     client.read(buffer, null, new CompletionHandler<Integer, Void>() {
       @Override
       public void completed(Integer result, Void attachment) {        
@@ -128,24 +136,12 @@ public class FunctionComputation {
 
         if (message.equals("Start")) {
           init();
-          try {
-            readMessage();
-          } catch (Exception e) {            
-            e.printStackTrace();
-          }
+          readMessage();
           sendResult();
         } else if (message.equals("Report")) {
-          try {
-            handleReport();
-          } catch (Exception e) {            
-            e.printStackTrace();
-          }
+          handleReport();
         } else if (message.equals("Close")) {
-          try {
-            handleClose();
-          } catch (Exception e) {            
-            e.printStackTrace();
-          }
+          handleClose();
         }
       }
 
@@ -157,7 +153,7 @@ public class FunctionComputation {
     });
   }
 
-  private static void handleReport() throws Exception {    
+  private static void handleReport() {    
     ByteBuffer buffer = serializeFunctionResult(false);
     client.write(buffer, null, new CompletionHandler<Integer, Void>() {
       @Override
@@ -171,11 +167,7 @@ public class FunctionComputation {
           return;
         }
 
-        try {          
-          readMessage();
-        } catch (Exception e) {          
-          e.printStackTrace();
-        }
+        readMessage();
       }
 
       @Override
@@ -185,7 +177,7 @@ public class FunctionComputation {
     });
   }
 
-  private static void handleClose() throws Exception {
+  private static void handleClose() {
     ByteBuffer buffer = serializeFunctionResult(true);
     client.write(buffer, null, new CompletionHandler<Integer, Void>() {
       @Override
@@ -199,11 +191,7 @@ public class FunctionComputation {
           return;
         }
 
-        try {          
-          readMessage();
-        } catch (Exception e) {          
-          e.printStackTrace();
-        }
+        readMessage();
       }
 
       @Override
@@ -213,10 +201,15 @@ public class FunctionComputation {
     });
   }
 
-  private static ByteBuffer serializeFunctionResult(boolean isComputed) throws Exception {
+  private static ByteBuffer serializeFunctionResult(boolean isComputed) {
     ByteArrayOutputStream bos = new ByteArrayOutputStream();
-    ObjectOutputStream oos = new ObjectOutputStream(bos);
-    oos.writeObject(new FunctionResult(functionName, compResult, error, isComputed));   
+    ObjectOutputStream oos = null;
+    try {
+      oos = new ObjectOutputStream(bos);
+      oos.writeObject(new FunctionResult(functionName, compResult, error, isComputed)); 
+    } catch (IOException e) {
+      e.printStackTrace();
+    }      
     ByteBuffer buffer = ByteBuffer.wrap(bos.toByteArray());
     return buffer;
   }
