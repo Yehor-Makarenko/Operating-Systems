@@ -67,6 +67,7 @@ public class TestManager {
 
     if (errorsCache.containsKey(n)) {
       createUI();
+      menuButton.setEnabled(false);
       output.append("Get from cache: cannot get result. Report:" + errorsCache.get(n) + "\n\n"); 
       addReturnButton();
       return;
@@ -267,6 +268,7 @@ public class TestManager {
     output = new JTextArea();   
     output.setEditable(false);
     menuButton = new JButton("Open menu");    
+    JLabel label = new JLabel("Output:");
     JScrollPane scrollPane = new JScrollPane(output);
     mainPanel = new JPanel(null);
     
@@ -274,10 +276,12 @@ public class TestManager {
       openMenu();
     });
         
-    menuButton.setBounds(200, 150, 100, 30);    
+    menuButton.setBounds(200, 150, 100, 30);   
+    label.setBounds(50, 270, 400, 30);
     scrollPane.setBounds(50, 300, 400, 400);
   
     mainPanel.add(menuButton);  
+    mainPanel.add(label);
     mainPanel.add(scrollPane);
     frame.setContentPane(mainPanel);
     frame.revalidate();
